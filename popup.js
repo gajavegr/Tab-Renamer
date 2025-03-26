@@ -1,3 +1,9 @@
+// Pre-populate the current tab title when popup opens
+chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+  const activeTab = tabs[0];
+  document.getElementById('newTitle').value = activeTab.title;
+});
+
 document.getElementById('renameBtn').addEventListener('click', () => {
     const newTitle = document.getElementById('newTitle').value;
     if (newTitle) {
