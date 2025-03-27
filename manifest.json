@@ -1,12 +1,16 @@
 {
     "manifest_version": 3,
     "name": "Tab Renamer",
-    "version": "1.1",
-    "description": "Allows renaming of tabs",
+    "version": "2.0",
+    "description": "Allows renaming of tabs with persistent custom titles",
     "permissions": [
       "tabs",
       "activeTab",
-      "scripting"
+      "scripting",
+      "storage"
+    ],
+    "host_permissions": [
+      "<all_urls>"
     ],
     "action": {
       "default_popup": "popup.html",
