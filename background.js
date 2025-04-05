@@ -80,6 +80,22 @@ const resetTabTitle = (tabId) => {
   }
 };
 
+// Function to check and maintain custom title
+const checkAndMaintainTitle = (tabId) => {
+  if (!tabTitles[tabId]?.customTitle) return;
+
+  chrome.tabs.get(tabId, (tab) => {
+    if (chrome.runtime.lastError) return;
+
+    // If current title differs from custom title
+    if (tab.title !== tabTitles[tabId].customTitle) {
+      // Update original title and reapply custom title
+      tabTitles[tabId].originalTitle = tab.title;
+      setTabTitle(tabId, tabTitles[tabId].customTitle);
+    }
+  });
+};
+
 // Listen for tab updates to handle navigation
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete') {
@@ -105,19 +121,35 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 // Listen for messages from content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "renameTab") {
-    
-    // Store the current title as original title before applying custom title
-    if (!tabTitles[message.tabId]) {
-      tabTitles[message.tabId] = {
-        originalTitle: message.originalTitle,
-        customTitle: message.title
-      };
-    } else {
-      tabTitles[message.tabId].customTitle = message.title;
-    }
+    // Store both original and custom titles
+    tabTitles[message.tabId] = {
+      originalTitle: message.originalTitle,
+      customTitle: message.title
+    };
 
     setTabTitle(message.tabId, message.title);
+    
+    // Start periodic check for this tab
+    const checkInterval = setInterval(() => {
+      chrome.tabs.get(message.tabId, (tab) => {
+        if (chrome.runtime.lastError) {
+          clearInterval(checkInterval);
+          return;
+        }
+        checkAndMaintainTitle(message.tabId);
+      });
+    }, 1000); // Check every second
+
+    // Store the interval ID so we can clear it later
+    if (!tabTitles[message.tabId].checkInterval) {
+      tabTitles[message.tabId].checkInterval = checkInterval;
+    }
   } else if (message.action === "resetTab") {
     resetTabTitle(message.tabId);
+    // Clear the check interval when resetting
+    if (tabTitles[message.tabId]?.checkInterval) {
+      clearInterval(tabTitles[message.tabId].checkInterval);
+      delete tabTitles[message.tabId].checkInterval;
+    }
   }
 });
